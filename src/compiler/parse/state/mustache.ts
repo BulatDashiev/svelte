@@ -38,7 +38,7 @@ export default function mustache(parser: Parser) {
 
 	parser.allow_whitespace();
 
-	// {/if}, {/each} or {/await}
+	// {/if}, {/each}, {/await} or {/with}
 	if (parser.eat('/')) {
 		let block = parser.current();
 		let expected;
@@ -61,6 +61,8 @@ export default function mustache(parser: Parser) {
 			expected = 'if';
 		} else if (block.type === 'EachBlock') {
 			expected = 'each';
+		} else if (block.type === 'WithBlock') {
+			expected = 'with';
 		} else if (block.type === 'AwaitBlock') {
 			expected = 'await';
 		} else {
@@ -212,19 +214,21 @@ export default function mustache(parser: Parser) {
 		await_block[is_then ? 'then' : 'catch'] = new_block;
 		parser.stack.push(new_block);
 	} else if (parser.eat('#')) {
-		// {#if foo}, {#each foo} or {#await foo}
+		// {#if foo}, {#each foo}, {#await foo} or {#with foo}
 		let type;
 
 		if (parser.eat('if')) {
 			type = 'IfBlock';
 		} else if (parser.eat('each')) {
 			type = 'EachBlock';
+		} else if (parser.eat('with')) {
+			type = 'WithBlock';
 		} else if (parser.eat('await')) {
 			type = 'AwaitBlock';
 		} else {
 			parser.error({
 				code: `expected-block-type`,
-				message: `Expected if, each or await`
+				message: `Expected if, each, await or with`
 			});
 		}
 
@@ -303,7 +307,8 @@ export default function mustache(parser: Parser) {
 		}
 
 		const await_block_shorthand = type === 'AwaitBlock' && parser.eat('then');
-		if (await_block_shorthand) {
+		const with_block_value = type === 'WithBlock' && parser.eat('as');
+		if (await_block_shorthand || with_block_value) {
 			parser.require_whitespace();
 			block.value = parser.read_destructure_pattern();
 			parser.allow_whitespace();
